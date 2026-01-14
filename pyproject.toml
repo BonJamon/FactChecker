@@ -1,0 +1,13 @@
+[project]
+name = "factchecker"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "dotenv>=0.9.9",
+    "fastmcp>=2.14.2",
+    "langchain>=1.2.3",
+    "langchain-openai>=1.1.7",
+    "wikipedia-mcp>=1.7.0",
+]
