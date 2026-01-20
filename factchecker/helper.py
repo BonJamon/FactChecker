@@ -1,13 +1,12 @@
-from wikipedia_mcp.server import create_server as create_wikipedia_server
-from thenewsapi_mcp.server import create_server as create_news_server
-from fastmcp.client import Client
 from langchain_core.tools import StructuredTool 
 from pydantic import BaseModel, confloat
-from typing import Literal, Annotated, List
+from typing import Literal, Annotated, List, Any
 from langchain.agents import create_agent
-from dotenv import load_dotenv
-from factchecker.templates import NEWS_AGENT_TEMPLATE, WIKIPEDIA_AGENT_TEMPLATE, CLASSIFICATION_TEMPLATE
-import os
+from factchecker.templates import CLASSIFICATION_TEMPLATE
+from langsmith import traceable
+from langchain.agents.middleware import AgentMiddleware, AgentState, hook_config
+from langgraph.runtime import Runtime
+
 
 async def load_langchain_tools(client, original_tools):
     """
@@ -17,7 +16,8 @@ async def load_langchain_tools(client, original_tools):
     for tool in original_tools:
         tool_name = tool.name
         async def _tool_runner(_tool_name = tool_name, **kwargs):
-            return await client.call_tool(_tool_name, kwargs)
+            result = await client.call_tool(_tool_name, kwargs)
+            return result.structured_content
 
         tools.append(
             StructuredTool(
@@ -34,68 +34,40 @@ class Answer(BaseModel):
     summary: str
     links: List[str]
 
-async def run_wikipedia_agent(query):
-    load_dotenv()
-    try:
-        mcp = create_wikipedia_server()
 
-        client = Client(mcp)
-        async with client:
-            tools = await client.list_tools()
-            tools = await load_langchain_tools(client, tools)
+class ContentFilterMiddleware(AgentMiddleware):
+    """Deterministic guardrail: Block requests containing banned keywords."""
 
+    def __init__(self, banned_keywords: list[str]):
+        super().__init__()
+        self.banned_keywords = [kw.lower() for kw in banned_keywords]
 
-            system_prompt=WIKIPEDIA_AGENT_TEMPLATE
+    @hook_config(can_jump_to=["end"])
+    def before_agent(self, state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
+        # Get the first user message
+        if not state["messages"]:
+            return None
 
-            agent = create_agent(
-                model="openai:gpt-4.1-mini",
-                tools=tools,
-                system_prompt=system_prompt,
-                response_format=Answer
-            )
+        first_message = state["messages"][0]
+        if first_message.type != "human":
+            return None
 
-            result = await agent.ainvoke(
-                {"messages": [{"role": "user", "content": query}]}
-            )
-            return result["structured_response"]
+        content = first_message.content.lower()
 
-        
-    except ValueError as e:
-        # Handle misconfiguration errors
-        print(f"Error: {e}")
-        return []
+        # Check for banned keywords
+        for keyword in self.banned_keywords:
+            if keyword in content:
+                # Block execution before any processing
+                return {
+                    "messages": [{
+                        "role": "assistant",
+                        "content": "Inappropriate"
+                    }],
+                    "jump_to": "end"
+                }
+
+        return None
     
-
-async def run_news_agent(query):
-    load_dotenv()
-    try:
-        mcp = create_news_server(os.getenv("THENEWSAPI_API_KEY"))
-
-        client = Client(mcp)
-        async with client:
-            tools = await client.list_tools()
-            tools = await load_langchain_tools(client, tools)
-
-
-            system_prompt=NEWS_AGENT_TEMPLATE
-
-            agent = create_agent(
-                model="openai:gpt-4.1-mini",
-                tools=tools,
-                system_prompt=system_prompt,
-                response_format=Answer
-            )
-
-            result = await agent.ainvoke(
-                {"messages": [{"role": "user", "content": query}]}
-            )
-            return result["structured_response"]
-
-        
-    except ValueError as e:
-        # Handle misconfiguration errors
-        print(f"Error: {e}")
-        return []
     
 
 class Classification(BaseModel):
@@ -104,7 +76,7 @@ class Classification(BaseModel):
     news_prob: Annotated[float, confloat(ge=0.0, le=1.0)]
 
 
-
+@traceable(name="classify_claim")
 async def classify_and_score(query: str):
     """
     Takes a claim query and returns:
@@ -113,12 +85,18 @@ async def classify_and_score(query: str):
     - probability News can answer
     """
     agent = create_agent(
-        model="openai:gpt-4.1-mini",
+        model="openai:gpt-4.1-nano",
         system_prompt=CLASSIFICATION_TEMPLATE,
-        response_format=Classification
+        response_format=Classification,
+        middleware=[ContentFilterMiddleware(banned_keywords=["hack", "exploit", "malware"])]
     )
 
     result = await agent.ainvoke(
         {"messages": [{"role": "user", "content": query}]}
     )
-    return result["structured_response"]
+    #Check if guardrails detected prompt injection attack
+    if result["messages"][-1].content=="Inappropriate":
+        return "Inappropriate"
+    else:
+        return result["structured_response"]
+
