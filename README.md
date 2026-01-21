@@ -1,1 +1,1 @@
-A Factchecker that checks claims using wikipedia and trusted news articles and returns a classification (True, False, Unknown), a summary why it what classified this way and corresponding links. 
+A Factchecker that checks claims using wikipedia and trusted news articles and returns a classification (True, False, Unknown), a summary why it was classified this way as well as corresponding links. 
