@@ -1,6 +1,7 @@
 from thenewsapi_mcp.server import create_server as create_news_server
 from fastmcp.client import Client
 from langchain.agents import create_agent
+from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 from factchecker.templates import NEWS_AGENT_TEMPLATE
 import os
@@ -9,7 +10,6 @@ from factchecker.helper import load_langchain_tools, Answer
 
 @traceable(name="search_news")
 async def run_news_agent(query):
-    load_dotenv()
     try:
         mcp = create_news_server(os.getenv("THENEWSAPI_API_KEY"))
 
@@ -21,8 +21,10 @@ async def run_news_agent(query):
 
             system_prompt=NEWS_AGENT_TEMPLATE
 
+            llm = ChatOpenAI(name="openai:gpt-4.1-nano", temperature=0.2)
+
             agent = create_agent(
-                model="openai:gpt-4.1-nano",
+                model=llm,
                 tools=tools,
                 system_prompt=system_prompt,
                 response_format=Answer

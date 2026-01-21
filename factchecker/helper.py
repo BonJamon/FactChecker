@@ -2,6 +2,7 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, confloat
 from typing import Literal, Annotated, List, Any
 from langchain.agents import create_agent
+from langchain_openai import ChatOpenAI
 from factchecker.templates import CLASSIFICATION_TEMPLATE
 from langsmith import traceable
 from langchain.agents.middleware import AgentMiddleware, AgentState, hook_config
@@ -84,8 +85,10 @@ async def classify_and_score(query: str):
     - probability Wikipedia can answer
     - probability News can answer
     """
+    llm = ChatOpenAI(name="openai:gpt-4.1-nano", temperature=0.0)
+    
     agent = create_agent(
-        model="openai:gpt-4.1-nano",
+        model=llm,
         system_prompt=CLASSIFICATION_TEMPLATE,
         response_format=Classification,
         middleware=[ContentFilterMiddleware(banned_keywords=["hack", "exploit", "malware"])]

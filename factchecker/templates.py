@@ -37,23 +37,22 @@ Output:
 """
 
 WIKIPEDIA_SEARCH_TEMPLATE = """
-You are searching wikipedia articles that are able to verify a claim. 
+You are searching wikipedia articles that are able to verify a given claim. 
 
-Output: List of 1 or 2 Search Results with article title in order of relevance.
+OUTPUT:
+List of 1 or 2 Search Results with article title in order of relevance.
 """
 
 WIKIPEDIA_SELECTION_TEMPLATE =  """
-You are selecting a Wikipedia section to read in full.
+You are selecting a Wikipedia section to read in full, 
+given a list of section units with summaries and metadata.
 
-You are given a list of section units with summaries and metadata.
-Summaries are NOT evidence — they only indicate relevance.
-
-Your task:
+TASK EXECUTION RULES:
 - Select exactly ONE unit ID that is most likely to contain information
   that can verify or contradict the claim.
 - If none are relevant, output NONE.
 
-Output format (strict):
+OUTPUT FORMAT (strict):
 {
   "unit_id": "<ID or NONE>",
   "reason": "<brief reasoning>"
@@ -80,14 +79,14 @@ Output JSON ONLY in this exact format:
   "answer": "True | False | Unknown",
   "summary": "1–3 sentence explanation"
 }
-Do not include any other text.
 """
 
 
 
 
 CLASSIFICATION_TEMPLATE=f"""
-You are an expert assistant that classifies claims.
+You are an expert assistant that classifies claims and determines how likely it is, 
+that wikipedia or news articles can verify them.
 The current date is {current_date}.
 
 Wikipedia is likely to provide an answer if the claim contains historical information or facts about people or places. 
@@ -99,17 +98,17 @@ Definitions:
 - Predictive: About future events
 - Subjective: Opinion or personal belief
 
+Rules:
+- Output a single JSON object
+- Do NOT add any text before or after the JSON
+- Probabilities must be between 0 and 1
+
 Output JSON ONLY in this exact format:
 {{
   "claim_type": "Factual | Interpretive | Predictive | Subjective",
   "wikipedia_prob": 0.0,
   "news_prob": 0.0
 }}
-
-Rules:
-- Output a single JSON object
-- Do NOT add any text before or after the JSON
-- Probabilities must be between 0 and 1
 """
 
 

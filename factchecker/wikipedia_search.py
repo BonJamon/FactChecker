@@ -209,8 +209,10 @@ async def get_wikipedia_articles(query, search_tool):
     #Get potential articles
     system_prompt=WIKIPEDIA_SEARCH_TEMPLATE
 
+    llm = ChatOpenAI(name="openai:gpt-4.1-nano", temperature=0.2)
+
     agent = create_agent(
-        model="openai:gpt-4.1-nano",
+        model=llm,
         tools=[search_tool],
         system_prompt=system_prompt,
         response_format=SearchResultList
@@ -227,7 +229,7 @@ async def get_wikipedia_articles(query, search_tool):
 async def select_wikipedia_sections(query, units, title):
     #select one unit of a wikipedia article based on query and units metadata
     parser = PydanticOutputParser(pydantic_object=SectionResult)
-    llm = ChatOpenAI(name="openai:gpt-4.1-nano")
+    llm = ChatOpenAI(name="openai:gpt-4.1-nano", temperature=0.0)
 
     messages = [
         SystemMessage(content=WIKIPEDIA_SELECTION_TEMPLATE),
@@ -245,7 +247,7 @@ async def select_wikipedia_sections(query, units, title):
 @traceable(name="verify claim with section text")
 async def verify_claim(query, full_text):
     parser = PydanticOutputParser(pydantic_object=ShortAnswer)
-    llm = ChatOpenAI(name="openai:gpt-4.1-nano")
+    llm = ChatOpenAI(name="openai:gpt-4.1-nano", temperature=0.0)
 
     messages = [SystemMessage(content=WIKIPEDIA_VERIFICATION_TEMPLATE),
                 HumanMessage(content=(
@@ -262,7 +264,6 @@ async def verify_claim(query, full_text):
 
 @traceable(name="search_wikipedia")
 async def search_wikipedia(query):
-    load_dotenv()
     try:
         mcp = create_wikipedia_server()
 

@@ -2,6 +2,7 @@ from factchecker.helper import classify_and_score, Answer
 from factchecker.wikipedia_search import search_wikipedia
 from factchecker.news_search import run_news_agent
 from langsmith import traceable
+from dotenv import load_dotenv
 
 
 async def run_agent_by_source(source, query):
@@ -14,6 +15,7 @@ async def run_agent_by_source(source, query):
 
 @traceable(name="factchecker")
 async def factchecker(query):
+    load_dotenv()
     #1.) Classify if it can actually be checked
     response = await classify_and_score(query)
 
