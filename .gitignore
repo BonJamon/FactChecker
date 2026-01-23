@@ -1,13 +1,30 @@
 # Python-generated files
 __pycache__/
 *.py[oc]
-build/
-dist/
+backend/.build/
+backend/dist/
 wheels/
 *.egg-info
 
 # Virtual environments
 .venv
+venv/
 
 #Environment secrets
 .env
+.env.*
+!.env.example
+
+# Lambda packages
+backend/lambda-package.zip
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+*.tfvars.secret
+
+# AWS
+.aws/
